@@ -14,7 +14,7 @@ def start_instance(ami_image_id, instance_type, security_group):
     print(KeyPairOut)
     outfile.write(KeyPairOut)
 
-    instance = ec2.create_instances(
+    instances = ec2.create_instances(
         ImageId=ami_image_id,
         MinCount=1,
         MaxCount=1,
@@ -23,12 +23,14 @@ def start_instance(ami_image_id, instance_type, security_group):
         SecurityGroupIds=security_group,
         InstanceInitiatedShutdownBehavior='terminate')
 
+    instance = instances[0]
+
     return {
         'keypairName': keypair_name,
         'id': instance.id,
         'privateIp': instance.private_ip_address,
         'publicIP': instance.public_ip_address,
-         }
+    }
 
 
 def lambda_handler(event, context):
