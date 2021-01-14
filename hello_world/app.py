@@ -4,7 +4,7 @@ import boto3
 from uuid import uuid4
 
 
-def start_instance(ami_image_id, instance_type):
+def start_instance(ami_image_id, instance_type, security_group):
     ec2 = boto3.resource('ec2')
 
     outfile = open('/tmp/ec2-keypair.pem','w')
@@ -14,18 +14,21 @@ def start_instance(ami_image_id, instance_type):
     print(KeyPairOut)
     outfile.write(KeyPairOut)
 
-    instances = ec2.create_instances(
+    instance = ec2.create_instances(
         ImageId=ami_image_id,
         MinCount=1,
         MaxCount=1,
         InstanceType=instance_type,
-        KeyName=keypair_name)
+        KeyName=keypair_name,
+        SecurityGroupIds=security_group,
+        InstanceInitiatedShutdownBehavior='terminate')
 
-    # return {
-    #     'keypairName': keypair_name,
-    #     }
-
-    return instances
+    return {
+        'keypairName': keypair_name,
+        'id': instance.id,
+        'privateIp': instance.private_ip_address,
+        'publicIP': instance.public_ip_address,
+         }
 
 
 def lambda_handler(event, context):
@@ -52,13 +55,14 @@ def lambda_handler(event, context):
     qrp = event['queryStringParameters'] or {}
     ami_image_id = qrp.get('AMIImageId', 'ami-0be2609ba883822ec')
     ec2_type = qrp.get('EC2Type', 't2.micro')
+    security_group = qrp.get('SecurityGroups', 'ec2_simple_security_group')
 
-    response = start_instance(ami_image_id, ec2_type)
+    response = start_instance(ami_image_id, ec2_type, [security_group])
     print(response)
 
     return {
         "statusCode": 200,
         "body": json.dumps({
-            "message": "generated ec2",
+            "message": response,
         }),
     }
